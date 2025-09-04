@@ -110,6 +110,8 @@ GEM
     erubi (1.13.1)
     et-orbi (1.3.0)
       tzinfo
+    foreman (0.90.0)
+      thor (~> 1.4)
     fugit (1.11.2)
       et-orbi (~> 1, >= 1.2.11)
       raabro (~> 1.4)
@@ -362,6 +364,7 @@ DEPENDENCIES
   capybara
   cssbundling-rails
   debug
+  foreman
   jbuilder
   jsbundling-rails
   kamal

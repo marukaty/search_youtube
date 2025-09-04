@@ -12,21 +12,25 @@
 default: &default
   adapter: mysql2
   encoding: utf8mb4
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  username: root
-  password:
-  socket: /tmp/mysql.sock
+  charset: utf8mb4
+  collation: utf8mb4_bin
+  port: <%= Rails.application.credentials.dig(:mysql, :port) || 3307 %>
+  username: <%= Rails.application.credentials.dig(:mysql, :user) || 'tubescope_user' %>
+  password: <%= Rails.application.credentials.dig(:mysql, :password) || 'tubescope' %>
+  database: <%= Rails.application.credentials.dig(:mysql, :database) || 'tubescope_dev' %>
 
 development:
-  <<: *default
-  database: search_youtube_development
+  primary:
+    <<: *default
+    host: <%= Rails.application.credentials.dig(:mysql, :host) || '127.0.0.1' %>
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.
 test:
   <<: *default
-  database: search_youtube_test
+  database: tubescope_test
+  host: <%= Rails.application.credentials.dig(:mysql, :host) || '127.0.0.1' %>
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is
@@ -51,18 +55,21 @@ test:
 production:
   primary: &primary_production
     <<: *default
-    database: search_youtube_production
-    username: search_youtube
-    password: <%= ENV["SEARCH_YOUTUBE_DATABASE_PASSWORD"] %>
+    database: tubescope
+    host: <%= Rails.application.credentials.dig(:mysql, :host) %>
+    ssl_mode: :required
+    sslkey: <%= Rails.application.credentials.dig(:mysql, :ssl_key_path) %>
+    sslcert: <%= Rails.application.credentials.dig(:mysql, :ssl_cert_path) %>
+    sslca: <%= Rails.application.credentials.dig(:mysql, :ssl_ca_path) %>
   cache:
     <<: *primary_production
-    database: search_youtube_production_cache
+    database: tubescope_production_cache
     migrations_paths: db/cache_migrate
   queue:
     <<: *primary_production
-    database: search_youtube_production_queue
+    database: tubescope_production_queue
     migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
-    database: search_youtube_production_cable
+    database: tubescope_production_cable
     migrations_paths: db/cable_migrate
