@@ -93,7 +93,7 @@ jobs:
           RAILS_ENV: test
         run: |
           bundle install
-          mysql -h 127.0.0.1 -P 3306 -u root -ptubescope < ./db/setup_for_db.sql
+          mysql -h 127.0.0.1 -P 3307 -u root -ptubescope < ./db/setup_for_db.sql
           bin/rails db:prepare
           bin/rails assets:precompile
       # - name: run tests
