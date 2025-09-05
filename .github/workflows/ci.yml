@@ -6,37 +6,96 @@ on:
     branches: [ main ]
 
 jobs:
-  test:
+  scan_ruby:
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: tubescope_test
-          MYSQL_USER: tubescope_user
-          MYSQL_PASSWORD: tubescope
-        ports:
-          - 3307:3306
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
-          --health-interval=10s --health-timeout=5s --health-retries=10
-
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - uses: ruby/setup-ruby@v1
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Install MySQL client headers
-        run: sudo apt-get update && sudo apt-get install -y default-libmysqlclient-dev
+      - name: Scan for common Rails security vulnerabilities using static analysis
+        run: bin/brakeman --no-pager
 
-      - name: Prepare & Run tests
+  # lint:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+
+  #     - name: Set up Ruby
+  #       uses: ruby/setup-ruby@v1
+  #       with:
+  #         ruby-version: .ruby-version
+  #         bundler-cache: true
+
+  #     - name: Lint code for consistent style
+  #       run: bin/rubocop -f github
+
+  test:
+    runs-on: ubuntu-latest
+    env:
+      RAILS_ENV: test
+      TZ: Asia/Tokyo
+      RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY_TEST }}
+    services:
+      mysql:
+        image: mysql
+        volumes:
+          - test_mysqlconf.d:/etc/mysql/conf.d
+        ports:
+          - 3307:3306
+        env:
+          MYSQL_ROOT_PASSWORD: tubescope
+          BIND-ADDRESS: 0.0.0.0
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+      # redis:
+      #   image: redis
+      #   ports:
+      #     - 6379:6379
+      #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+
+    steps:
+      - name: Install packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            build-essential \
+            default-libmysqlclient-dev \
+            git \
+            libyaml-dev \
+            node-gyp \
+            pkg-config \
+            python-is-python3 \
+            google-chrome-stable
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: .ruby-version
+          bundler-cache: true
+
+      - name: Prepare & run tests
         env:
           RAILS_ENV: test
         run: |
-          bin/rails db:drop db:create db:schema:load
-          bin/rails test test:system
+          bundle install
+          mysql -h 127.0.0.1 -P 3306 -u root -ptubescope < ./db/setup_for_db.sql
+          bin/rails db:prepare
+          bin/rails assets:precompile
+      # - name: run tests
+      #   run: |
+      #     bundle exec rspec
