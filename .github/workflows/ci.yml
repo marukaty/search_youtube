@@ -93,6 +93,7 @@ jobs:
           RAILS_ENV: test
         run: |
           bundle install
+          rm -rf node_modules
           yarn install
           mysql -h 127.0.0.1 -P 3307 -u root -ptubescope < ./db/setup_for_db.sql
           bin/rails db:prepare
