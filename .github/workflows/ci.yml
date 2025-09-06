@@ -135,38 +135,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Node を公式アクションで入れる（これ超重要）
-      - name: Set up Node (Yarn)
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'lts/*'
-          cache: 'yarn'
-
       - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
             default-libmysqlclient-dev
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Yarn
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
-
-      - name: Enable Yarn 4.9.2 via Corepack
-        run: |
-          corepack enable
-          corepack prepare yarn@4.9.2 --activate
-          yarn --version
-          node -v
-
-      # Yarn で依存を“確実に”入れる
-      - name: Install JS deps
-        run: |
-          yarn install --immutable
-          # 依存が本当に入ったか即チェック（失敗ならここで落とす）
-          node -p "require.resolve('@hotwired/turbo-rails/package.json')"
-          node -p "require.resolve('@hotwired/stimulus/package.json')"
 
       - name: Prepare & precompile
         run: |
