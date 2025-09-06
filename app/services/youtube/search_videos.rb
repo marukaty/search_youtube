@@ -5,8 +5,10 @@ module Youtube
   class SearchVideos
     ENDPOINT = "https://www.googleapis.com/youtube/v3/search"
 
-    def self.call(query:, limit: 10)
-      new(query, limit).call
+    class << self
+      def call(query:, limit: 10)
+        new(query, limit).call
+      end
     end
 
     def initialize(query, limit)

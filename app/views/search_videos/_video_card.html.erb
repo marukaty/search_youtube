@@ -1,0 +1,20 @@
+<article class="border rounded-lg overflow-hidden shadow-sm">
+  <a href="<%= v[:video_url] %>" target="_blank" rel="noopener">
+    <img src="<%= v[:thumbnail_url] %>" alt="" class="w-full aspect-video object-cover">
+  </a>
+  <div class="p-3 space-y-1">
+    <div class="text-sm text-gray-500">
+      <a href="<%= v[:channel_url] %>" target="_blank" rel="noopener" class="hover:underline">
+        <%= v[:channel_name] %>
+      </a>
+    </div>
+    <div class="text-xs text-gray-500">
+      投稿日: <%= l(Time.parse(v[:published_at]).in_time_zone('Asia/Tokyo'), format: :short) rescue v[:published_at] %>
+    </div>
+    <div>
+      <a href="<%= v[:video_url] %>" target="_blank" rel="noopener" class="text-blue-600 hover:underline">
+        動画を見る
+      </a>
+    </div>
+  </div>
+</article>
