@@ -1,0 +1,14 @@
+ja:
+  active_record:
+    models:
+      search_video: "検索動画"
+      search_videos: "検索動画"
+    attributes:
+      search_video:
+        q: "キーワード"
+        limit: "取得件数"
+  time:
+    formats:
+      default: "%Y/%m/%d %H:%M"
+      short: "%Y/%m/%d %H:%M"
+      long: "%Y年%m月%d日(%a) %H時%M分%S秒"
