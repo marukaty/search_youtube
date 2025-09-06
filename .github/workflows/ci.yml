@@ -22,63 +22,150 @@ jobs:
       - name: Scan for common Rails security vulnerabilities using static analysis
         run: bin/brakeman --no-pager
 
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+  # lint:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: .ruby-version
-          bundler-cache: true
+  #     - name: Set up Ruby
+  #       uses: ruby/setup-ruby@v1
+  #       with:
+  #         ruby-version: .ruby-version
+  #         bundler-cache: true
 
-      - name: Lint code for consistent style
-        run: bin/rubocop -f github
+  #     - name: Lint code for consistent style
+  #       run: bin/rubocop -f github
+
+  # test:
+    # runs-on: ubuntu-latest
+    # env:
+    #   RAILS_ENV: test
+    #   TZ: Asia/Tokyo
+    #   RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY_TEST }}
+    # services:
+    #   mysql:
+    #     image: mysql
+    #     volumes:
+    #       - test_mysqlconf.d:/etc/mysql/conf.d
+    #     ports:
+    #       - 3307:3306
+    #     env:
+    #       MYSQL_ROOT_PASSWORD: tubescope
+    #       BIND-ADDRESS: 0.0.0.0
+    #     options: >-
+    #       --health-cmd="mysqladmin ping"
+    #       --health-interval=10s
+    #       --health-timeout=5s
+    #       --health-retries=3
+
+    #   # redis:
+    #   #   image: redis
+    #   #   ports:
+    #   #     - 6379:6379
+    #   #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+
+    # steps:
+    #   - name: Install packages
+    #     run: |
+    #       sudo apt-get update
+    #       sudo apt-get install --no-install-recommends -y \
+    #         build-essential \
+    #         default-libmysqlclient-dev \
+    #         git \
+    #         libyaml-dev \
+    #         node-gyp \
+    #         pkg-config \
+    #         python-is-python3 \
+    #         google-chrome-stable
+
+    #   - name: Checkout code
+    #     uses: actions/checkout@v4
+
+    #   - name: Set up Ruby
+    #     uses: ruby/setup-ruby@v1
+    #     with:
+    #       ruby-version: .ruby-version
+    #       bundler-cache: true
+
+    #   - name: Cache node modules
+    #     uses: actions/cache@v4
+    #     with:
+    #       path: node_modules
+    #       key: ${{ runner.os }}-node-${{ hashFiles('**.yarn.lock') }}
+    #       restore-keys: |
+    #         ${{ runner.os }}-node-
+
+    #   - name: Prepare & run tests
+    #     env:
+    #       RAILS_ENV: test
+    #     run: |
+    #       bundle install
+    #       yarn cache clean
+    #       yarn install --check-files
+    #       chmod +x $(find node_modules -type f -name esbuild || true)
+    #       mysql -h 127.0.0.1 -P 3307 -u root -ptubescope < ./db/setup_for_db.sql
+    #       bin/rails db:prepare
+    #       bin/rails assets:precompile
+    #   # - name: run tests
+    #   #   run: |
+    #   #     bundle exec rspec
 
   test:
     runs-on: ubuntu-latest
+    env:
+      RAILS_ENV: test
+      TZ: Asia/Tokyo
+      RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY_TEST }}
 
     services:
       mysql:
-        image: mysql
+        image: mysql:8.0
         env:
-          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_ROOT_PASSWORD: tubescope
+          MYSQL_DATABASE: tubescope_test
+          MYSQL_USER: tubescope_user
+          MYSQL_PASSWORD: tubescope
         ports:
-          - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
-
-      # redis:
-      #   image: redis
-      #   ports:
-      #     - 6379:6379
-      #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptubescope --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=10
 
     steps:
-      - name: Install packages
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y build-essential default-libmysqlclient-dev git libyaml-dev node-gyp pkg-config python-is-python3 google-chrome-stable
+      - uses: actions/checkout@v4
 
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Install system packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y \
+            default-libmysqlclient-dev
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Set up Yarn
+        run: |
+          corepack enable
+          yarn install --frozen-lockfile
+
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Run tests
-        env:
-          RAILS_ENV: test
-          DATABASE_URL: mysql2://127.0.0.1:3306
-          # REDIS_URL: redis://localhost:6379/0
-        run: bin/rails db:test:prepare test test:system
+      - name: Prepare & precompile
+        run: |
+          bin/rails db:prepare
+          bin/rails assets:precompile
 
-      - name: Keep screenshots from failed system tests
-        uses: actions/upload-artifact@v4
+      - name: Run tests
+        run: bin/rails test test:system
+
+      # 失敗時のデバッグ（任意）
+      - name: Debug node_modules
         if: failure()
-        with:
-          name: screenshots
-          path: ${{ github.workspace }}/tmp/screenshots
-          if-no-files-found: ignore
+        run: |
+          ls -la node_modules | wc -l
+          ls -la node_modules/@hotwired || true

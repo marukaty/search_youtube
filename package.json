@@ -1,6 +1,7 @@
 {
   "name": "app",
   "private": true,
+  "packageManager": "yarn@4.9.2",
   "devDependencies": {
     "esbuild": "^0.25.9"
   },
