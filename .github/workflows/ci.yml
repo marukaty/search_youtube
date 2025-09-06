@@ -37,76 +37,143 @@ jobs:
   #     - name: Lint code for consistent style
   #       run: bin/rubocop -f github
 
+  # test:
+    # runs-on: ubuntu-latest
+    # env:
+    #   RAILS_ENV: test
+    #   TZ: Asia/Tokyo
+    #   RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY_TEST }}
+    # services:
+    #   mysql:
+    #     image: mysql
+    #     volumes:
+    #       - test_mysqlconf.d:/etc/mysql/conf.d
+    #     ports:
+    #       - 3307:3306
+    #     env:
+    #       MYSQL_ROOT_PASSWORD: tubescope
+    #       BIND-ADDRESS: 0.0.0.0
+    #     options: >-
+    #       --health-cmd="mysqladmin ping"
+    #       --health-interval=10s
+    #       --health-timeout=5s
+    #       --health-retries=3
+
+    #   # redis:
+    #   #   image: redis
+    #   #   ports:
+    #   #     - 6379:6379
+    #   #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+
+    # steps:
+    #   - name: Install packages
+    #     run: |
+    #       sudo apt-get update
+    #       sudo apt-get install --no-install-recommends -y \
+    #         build-essential \
+    #         default-libmysqlclient-dev \
+    #         git \
+    #         libyaml-dev \
+    #         node-gyp \
+    #         pkg-config \
+    #         python-is-python3 \
+    #         google-chrome-stable
+
+    #   - name: Checkout code
+    #     uses: actions/checkout@v4
+
+    #   - name: Set up Ruby
+    #     uses: ruby/setup-ruby@v1
+    #     with:
+    #       ruby-version: .ruby-version
+    #       bundler-cache: true
+
+    #   - name: Cache node modules
+    #     uses: actions/cache@v4
+    #     with:
+    #       path: node_modules
+    #       key: ${{ runner.os }}-node-${{ hashFiles('**.yarn.lock') }}
+    #       restore-keys: |
+    #         ${{ runner.os }}-node-
+
+    #   - name: Prepare & run tests
+    #     env:
+    #       RAILS_ENV: test
+    #     run: |
+    #       bundle install
+    #       yarn cache clean
+    #       yarn install --check-files
+    #       chmod +x $(find node_modules -type f -name esbuild || true)
+    #       mysql -h 127.0.0.1 -P 3307 -u root -ptubescope < ./db/setup_for_db.sql
+    #       bin/rails db:prepare
+    #       bin/rails assets:precompile
+    #   # - name: run tests
+    #   #   run: |
+    #   #     bundle exec rspec
+
   test:
     runs-on: ubuntu-latest
     env:
       RAILS_ENV: test
       TZ: Asia/Tokyo
       RAILS_MASTER_KEY: ${{ secrets.RAILS_MASTER_KEY_TEST }}
+
     services:
       mysql:
-        image: mysql
-        volumes:
-          - test_mysqlconf.d:/etc/mysql/conf.d
-        ports:
-          - 3307:3306
+        image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: tubescope
-          BIND-ADDRESS: 0.0.0.0
+          MYSQL_DATABASE: tubescope_test
+          MYSQL_USER: tubescope_user
+          MYSQL_PASSWORD: tubescope
+        ports:
+          - 3307:3306
         options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-
-      # redis:
-      #   image: redis
-      #   ports:
-      #     - 6379:6379
-      #   options: --health-cmd "redis-cli ping" --health-interval 10s --health-timeout 5s --health-retries 5
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -ptubescope --silent"
+          --health-interval=10s --health-timeout=5s --health-retries=10
 
     steps:
-      - name: Install packages
+      - uses: actions/checkout@v4
+
+      # Node を公式アクションで入れる（これ超重要）
+      - name: Set up Node (Yarn)
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: 'yarn'
+
+      - name: Install system packages
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y \
-            build-essential \
-            default-libmysqlclient-dev \
-            git \
-            libyaml-dev \
-            node-gyp \
-            pkg-config \
-            python-is-python3 \
-            google-chrome-stable
+            default-libmysqlclient-dev
 
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@v1
         with:
           ruby-version: .ruby-version
           bundler-cache: true
 
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-${{ hashFiles('**.yarn.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: Prepare & run tests
-        env:
-          RAILS_ENV: test
+      # Yarn で依存を“確実に”入れる
+      - name: Install JS deps
         run: |
-          bundle install
-          yarn cache clean
-          yarn install --check-files
-          chmod +x $(find node_modules -type f -name esbuild || true)
-          mysql -h 127.0.0.1 -P 3307 -u root -ptubescope < ./db/setup_for_db.sql
+          corepack enable
+          rm -rf node_modules
+          yarn install --frozen-lockfile
+          # 依存が本当に入ったか即チェック（失敗ならここで落とす）
+          node -p "require.resolve('@hotwired/turbo-rails/package.json')"
+          node -p "require.resolve('@hotwired/stimulus/package.json')"
+
+      - name: Prepare & precompile
+        run: |
           bin/rails db:prepare
           bin/rails assets:precompile
-      # - name: run tests
-      #   run: |
-      #     bundle exec rspec
+
+      - name: Run tests
+        run: bin/rails test test:system
+
+      # 失敗時のデバッグ（任意）
+      - name: Debug node_modules
+        if: failure()
+        run: |
+          ls -la node_modules | wc -l
+          ls -la node_modules/@hotwired || true
