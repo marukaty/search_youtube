@@ -1,0 +1,4 @@
+<%= turbo_stream.update "video_lists" do %>
+  <%= render "search_videos/sort_toolbar" %>
+  <%= render "search_videos/video_lists_inner", videos: @videos %>
+<% end %>
