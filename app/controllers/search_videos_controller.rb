@@ -1,19 +1,18 @@
 class SearchVideosController < ApplicationController
-  def index
-    @q = params[:q].to_s.strip
-    @limit = params[:limit].presence&.to_i || 10
+  def index; end
 
-    @videos = []
-    return if @q.blank?
-
-    @videos = Youtube::SearchVideos.call(query: @q, limit: @limit)
-  rescue StandardError => e
-    Rails.logger.warn("[videos#index] #{e.class}: #{e.message}")
-    flash.now[:alert] = user_friendly_message(e)
-    @videos = []
+  def video_lists
+    video_items = Kaminari.paginate_array(Youtube::SearchVideos.call(search_params))
+    video_items.reverse! if search_params[:direction] == "asc"
+    @videos = video_items.page(params[:page]).per(9)
+    render :video_lists, formats: :turbo_stream
   end
 
   private
+
+  def search_params
+    params.require(:search).permit(:q, :limit, :sort, :direction, :page_token, :published_after, :published_before)
+  end
 
   def user_friendly_message(error)
     case error.message

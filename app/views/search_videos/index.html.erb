@@ -1,9 +1,27 @@
 <div class="container mx-auto max-w-5xl p-4 space-y-6">
   <h1 class="text-3xl font-bold underline">YouTube検索</h1>
 
-  <%= form_with url: search_videos_path, method: :get, local: true, class: 'flex gap-2' do |f| %>
-    <%= f.text_field :q, value: @q, placeholder: "キーワードを入力", class: 'flex-1 border rounded px-3 py-2' %>
-    <%= f.select :limit, options_for_select([10,20,30,50], @limit), class: 'border rounded px-2 py-2' %>
+  <%= form_with url: video_lists_search_videos_path,
+                scope: :search,
+                method: :get,
+                data: { turbo_frame: "video_lists" },
+                class: 'flex gap-2 items-center' do |f| %>
+
+    <div>
+      <%= f.text_field :q, value: params[:q], placeholder: "キーワード", class: "w-full border rounded px-3 py-2" %>
+    </div>
+
+    <div>
+      <%= f.select :limit, options_for_select([10,20,30,50], 10), class: "w-full border rounded px-2 py-2" %>
+    </div>
+
+    <div class="flex items-center gap-1">
+      <%= f.date_field :published_after, class: "w-full border rounded px-2 py-2" %>
+      <div class="w-3xs">
+        〜
+      </div>
+      <%= f.date_field :published_before,   class: "w-full border rounded px-2 py-2" %>
+    </div>
     <%= f.submit '検索', class: 'px-4 py-2 rounded bg-black text-white' %>
   <% end %>
 
@@ -15,11 +33,9 @@
     <p class="text-sm text-gray-600">「<%= h @q %>」の検索結果（最大 <%= @limit %> 件）</p>
   <% end %>
 
-  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-    <% @videos.each do |v| %>
-      <%= render partial: 'video_card', locals: { v: v } %>
-    <% end %>
-  </div>
+  <%= turbo_frame_tag 'video_lists' do %>
+    <p class="text-gray-500">キーワードを入力して検索してください。</p>
+  <% end %>
 
   <% if @q.present? && @videos.empty? %>
     <p class="text-gray-500">該当する動画が見つかりませんでした。</p>

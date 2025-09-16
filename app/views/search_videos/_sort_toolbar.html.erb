@@ -1,0 +1,11 @@
+<div class="flex gap-2 mb-3">
+  <%= link_to "再生回数",
+        video_lists_search_videos_path(search: current_search(sort: "viewCount", direction: next_direction_for("viewCount"))),
+        class: "px-3 py-2 border rounded hover:bg-gray-100",
+        data: { turbo_prefetch: false } %>
+
+  <%= link_to "投稿日時",
+        video_lists_search_videos_path(search: current_search(sort: "date", direction: next_direction_for("date"))),
+        class: "px-3 py-2 border rounded hover:bg-gray-100",
+        data: { turbo_prefetch: false } %>
+</div>

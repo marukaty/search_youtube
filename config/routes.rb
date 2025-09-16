@@ -14,5 +14,7 @@ Rails.application.routes.draw do
 
   root "search_videos#index"
 
-  resources :search_videos, only: [ :index ]
+  resources :search_videos, only: [ :index ] do
+    get :video_lists, on: :collection
+  end
 end
