@@ -81,6 +81,7 @@ module Youtube
       cid = sn["channelId"]
       th  = sn["thumbnails"] || {}
       {
+        title:         sn["title"],
         channel_name:  sn["channelTitle"],
         channel_url:   "https://www.youtube.com/channel/#{cid}",
         video_url:     "https://www.youtube.com/watch?v=#{vid}",

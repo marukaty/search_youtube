@@ -20,7 +20,7 @@
       <div class="w-3xs">
         〜
       </div>
-      <%= f.date_field :published_before,   class: "w-full border rounded px-2 py-2" %>
+      <%= f.date_field :published_before, class: "w-full border rounded px-2 py-2" %>
     </div>
     <%= f.submit '検索', class: 'px-4 py-2 rounded bg-black text-white' %>
   <% end %>
@@ -29,6 +29,7 @@
     <p class="text-red-600"><%= flash[:alert] %></p>
   <% end %>
 
+  <%= @q.present? %>
   <% if @q.present? %>
     <p class="text-sm text-gray-600">「<%= h @q %>」の検索結果（最大 <%= @limit %> 件）</p>
   <% end %>

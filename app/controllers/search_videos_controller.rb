@@ -2,6 +2,8 @@ class SearchVideosController < ApplicationController
   def index; end
 
   def video_lists
+    @q = params.dig(:search, :q)
+    @limit = params.dig(:search, :limit) || 10
     video_items = Kaminari.paginate_array(Youtube::SearchVideos.call(search_params))
     video_items.reverse! if search_params[:direction] == "asc"
     @videos = video_items.page(params[:page]).per(9)
